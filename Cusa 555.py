@@ -263,7 +263,7 @@ def update(surf: pg.surface.Surface, font_large: pg.font.Font, font_small: pg.fo
     pg.draw.rect(surf, '#207020' if _mobilities[2] else '#A04040', mob_3_rect, border_top_right_radius=buf, border_bottom_right_radius=buf)
 
     if auto_action_rect.collidepoint(mouse_pos) and mouse_down():
-        if _auto_actions.count(None) == 3:
+        if _auto_actions.count(None) == 3 or _auto_actions[_selected_team] is not None:
             match _auto_actions[_selected_team]:
                 case None:                 _auto_actions[_selected_team] = ChargeAction.Docked
                 case ChargeAction.Docked:  _auto_actions[_selected_team] = ChargeAction.Engaged
