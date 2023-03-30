@@ -11,7 +11,7 @@ from core import *
 prev_grid = new_grid()
 grid = new_grid()
 
-_teams = ['555', 'N/A', 'N/A']
+_teams = ['1', '2', '3']
 
 _auto_actions = [None, None, None]
 _end_actions = [None, None, None]
@@ -201,6 +201,8 @@ def update(surf: pg.surface.Surface, font_large: pg.font.Font, font_small: pg.fo
     if pressed('1'): _selected_team = 0
     if pressed('2'): _selected_team = 1
     if pressed('3'): _selected_team = 2
+
+    if pressed('h'): easygui.msgbox(open(resource_path('help.txt')).read(), 'Help')
 
 
     ## Render and edit grid ##

@@ -9,7 +9,7 @@ executables = [cx_Freeze.Executable('Cusa 555.py', base=base, icon='icon.ico')]
 cx_Freeze.setup(
     name="Cusa 555",
     options={
-        "build_exe": {"packages": ['pygame', 'easygui'], 'include_files': ['icon.png', 'icon.ico']}
+        "build_exe": {"packages": ['pygame', 'easygui'], 'include_files': ['icon.png', 'icon.ico', 'help.txt']}
     },
     executables=executables
 )
