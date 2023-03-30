@@ -22,6 +22,7 @@ class ChargeAction(Enum):
 class GridPlacement:
     type: GamePiece
     auto: bool
+    team: int
 
 Grid: TypeAlias = dict[GridHeight, list[GridPlacement | None]]
 
@@ -63,8 +64,9 @@ def link_bonus(grid: Grid) -> int:
     return len(link_positions(grid)) * 5
 
 
-def score_grid(grid: Grid) -> int:
-    return link_bonus(grid) + sum(map(lambda x: sum(map(lambda y: score_piece(y, x[0]), x[1])), grid.items()))
+def score_grid(grid: Grid, index: int | None) -> int:
+    return (link_bonus(grid) if index is None else 0) +\
+        sum(map(lambda x: sum(map(lambda y: score_piece(y, x[0]) if index is None or y and index == y.team else 0, x[1])), grid.items()))
 
 
 def score_action(auto: bool, end_action: ChargeAction | None) -> int:
@@ -81,8 +83,17 @@ def score_action(auto: bool, end_action: ChargeAction | None) -> int:
         case ChargeAction.Engaged: return 10 + auto_bonus
 
 
-def score(grid: Grid, auto_action: ChargeAction | None, end_action: ChargeAction | None, mobility: bool):
-    return score_grid(grid) + score_action(True, auto_action) + score_action(False, end_action) + (3 if mobility else 0)
+def score(grid: Grid, auto_action: list[ChargeAction | None], end_action: list[ChargeAction | None], mobility: list[bool], team: int | None):
+    if team is None:
+        return score_grid(grid, None) +\
+            sum(map(lambda x: score_action(True, x), auto_action)) +\
+            sum(map(lambda x: score_action(False, x), end_action)) +\
+            sum(map(lambda x: (3 if x else 0), mobility))
+    else:
+        return score_grid(grid, team) +\
+            score_action(True, auto_action[team]) +\
+            score_action(False, end_action[team]) +\
+            (3 if mobility[team] else 0)
 
 
 def new_grid() -> Grid:
@@ -97,7 +108,8 @@ def grid_to_json(grid: Grid) -> object:
     def grid_placement_to_json(gp: GridPlacement | None) -> object:
         return [
             1 if gp.type == GamePiece.Cone else 0,
-            gp.auto
+            gp.auto,
+            gp.team
         ] if gp else None
 
     return [
@@ -110,10 +122,31 @@ def grid_to_json(grid: Grid) -> object:
 def json_to_grid(js: object) -> Grid:
     
     def json_to_grid_placement(js: object) -> GridPlacement | None:
+
         if js == None:
             return None
-        return GridPlacement(GamePiece.Cone if js[0] == 1 else GamePiece.Cube, js[1])
+
+        if not isinstance(js, list) or len(js) != 3:
+            raise JsonError(f'Grid placement must be a list of three items, not {js}')
+        
+        if js[0] not in (0, 1):
+            raise JsonError(f'Game piece can only be either 0 (cube) or 1 (cone), not {js[0]}')
+        
+        if js[1] not in (False, True):
+            raise JsonError(f'Whether or not a game piece is scored in auto should be a boolean, not {js[1]}')
+        
+        if js[2] not in (0, 1, 2):
+            raise JsonError(f'The team which scored a game piece must be an index between 0 and 2, not {js[2]}')
+
+        return GridPlacement(GamePiece.Cone if js[0] == 1 else GamePiece.Cube, js[1], js[2])
     
+    if not isinstance(js, list) or len(js) != 3:
+        raise JsonError(f'A grid list must be a two-dimensional array with three elements at its top layer')
+    
+    for x in js:
+        if len(x) != 9:
+            raise JsonError(f'A grid list must be a two-dimensional array with nine elements in its bottom layers')
+
     return {
         GridHeight.Low:  list(map(json_to_grid_placement, js[0])),
         GridHeight.Mid:  list(map(json_to_grid_placement, js[1])),
@@ -134,3 +167,12 @@ def json_to_action(js: object) -> ChargeAction | None:
         case 0: return ChargeAction.Park
         case 1: return ChargeAction.Docked
         case 2: return ChargeAction.Engaged
+        case _: raise JsonError(f'Charge action must be either None, 0, 1, or 2, not {js}')
+
+class JsonError(Exception):
+    pass
+
+def check_json(js: object, *keys: str):
+    for key in keys:
+        if key not in js:
+            raise JsonError(f'Required key "{key}" was not present in provided file!')
